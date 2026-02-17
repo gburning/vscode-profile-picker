@@ -1,25 +1,65 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode"
+import {
+    getGlobalStorage,
+    ProfileIdentifier,
+    WorkspaceWindowIdentifier,
+} from "./lib/storage"
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
+    // Show the built-in profile picker when…
+    // 1. …opening a new empty window
+    // 2. …opening a workspace that uses the default profile
+    if (!vscode.workspace.workspaceFolders) {
+        vscode.commands.executeCommand(
+            "workbench.profiles.actions.switchProfile",
+        )
+    } else {
+        const {
+            name,
+            workspaceFolders: [workspaceFolder],
+            workspaceFile,
+        } = vscode.workspace
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "vscode-profile-picker" is now active!');
+        // Get workspace window id from file or folder
+        const workspaceId: WorkspaceWindowIdentifier =
+            workspaceFile?.toString() ?? workspaceFolder.uri.toString()
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('vscode-profile-picker.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from vscode-profile-picker!');
-	});
+        // Look up profile id in associations mapping
+        const { profileAssociations } = await getGlobalStorage(context)
+        const profileId: ProfileIdentifier =
+            profileAssociations.workspaces[workspaceId]
 
-	context.subscriptions.push(disposable);
+        console.debug({
+            workspaceId,
+            profileAssociations,
+            profileId,
+        })
+
+        if (!profileId) {
+            let msg = "Could not find file or folder for workspace"
+            if (name) {
+                msg += ` with name "${name}"`
+            }
+            throw new Error(msg)
+        }
+
+        if (profileId === "__default__profile__") {
+            vscode.commands.executeCommand(
+                "workbench.profiles.actions.switchProfile",
+            )
+        }
+    }
+
+    const disposable = vscode.commands.registerCommand(
+        "vscode-profile-picker.open",
+        () => {
+            vscode.commands.executeCommand(
+                "workbench.profiles.actions.switchProfile",
+            )
+        },
+    )
+
+    context.subscriptions.push(disposable)
 }
 
 // This method is called when your extension is deactivated
