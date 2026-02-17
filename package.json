@@ -1,4 +1,5 @@
 {
+    "$schema": "vscode://schemas/vscode-extensions",
     "name": "vscode-profile-picker",
     "displayName": "vscode-profile-picker",
     "description": "",
